@@ -1,0 +1,2 @@
+2026-11-21 10:02:11 ERROR platba zamítnuta pro Petr Svoboda, karta 5500 0000 0000 0004
+2026-11-21 10:02:15 INFO požadavek z 172.16.5.9 od petr.svoboda@example.cz

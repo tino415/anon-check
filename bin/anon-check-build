@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(dirname "$(dirname "$(readlink -f "$0")")")
+read -r model library threshold <"$root/models.tsv"
+
+podman build --target app \
+  --build-arg LIBRARY="$library" --build-arg MODEL="$model" --build-arg THRESHOLD="$threshold" \
+  -t "localhost/anon-check:$(<"$root/VERSION")" "$root"

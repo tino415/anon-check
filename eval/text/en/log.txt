@@ -1,0 +1,2 @@
+[2026-11-22 14:00:01] auth ok for michal.kral@example.com from 203.0.113.42
+[2026-11-22 14:00:05] order placed by Michal Kráľ, card 3782 822463 10005, phone +420 777 888 999

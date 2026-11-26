@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+root=$(dirname "$(dirname "$(readlink -f "$0")")")
+image=${ANON_CHECK_IMAGE:-localhost/anon-check:$(<"$root/VERSION")}
+
+if ! podman image exists "$image"; then
+  echo "anon-check: image $image is missing, run anon-check-build" >&2
+  exit 2
+fi
+
+podman run --rm -i --network=none --read-only --cap-drop=ALL \
+  --security-opt=no-new-privileges --memory=2g "$image" "$@"
+status=$?
+((status <= 2)) || exit 2
+exit "$status"

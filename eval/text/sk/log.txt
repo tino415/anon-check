@@ -1,0 +1,3 @@
+2026-11-20T08:14:03Z INFO prihlásenie user=jan.novak@example.sk ip=192.168.10.24
+2026-11-20T08:14:09Z INFO platba od Ján Novák karta=4111 1111 1111 1111 suma=12.50
+2026-11-20T08:15:41Z WARN opakovanie pre zuzana.mala@example.sk z 10.0.0.7
