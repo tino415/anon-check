@@ -16,21 +16,17 @@ class Masker:
         return self.tokens[key]
 
     def mask(self, text: str, spans: list[Span]) -> tuple[str, list[Span]]:
-        parts = []
+        masked = ""
         token_spans = []
         position = 0
-        length = 0
         for span in sorted(spans, key=lambda s: s.start):
             token = self.token_for(span.type, text[span.start : span.end])
-            parts.append(text[position : span.start])
-            length += span.start - position
-            token_spans.append(Span(length, length + len(token), span.type, 1.0))
-            parts.append(token)
-            length += len(token)
+            masked += text[position : span.start]
+            token_spans.append(Span(len(masked), len(masked) + len(token), span.type, 1.0))
+            masked += token
             position = span.end
-        parts.append(text[position:])
-        return "".join(parts), token_spans
+        return masked + text[position:], token_spans
 
 
 def outside_tokens(spans: list[Span], token_spans: list[Span]) -> list[Span]:
-    return [span for span in spans if not any(span.overlaps(token) for token in token_spans)]
+    return [span for span in spans if not any(token.contains(span) for token in token_spans)]

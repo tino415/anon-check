@@ -14,11 +14,26 @@ class Rule:
 
 def find_rule_spans(text: str) -> list[Span]:
     return [
-        Span(*value_span(match), rule.type, 1.0)
+        Span(*value, rule.type, 1.0)
         for rule in RULES
         for match in rule.pattern.finditer(text)
-        if rule.is_valid(text[slice(*value_span(match))])
+        if (value := valid_value(rule, text, match))
     ]
+
+
+def valid_value(rule: Rule, text: str, match: re.Match[str]) -> tuple[int, int] | None:
+    start, end = value_span(match)
+    if rule.is_valid(text[start:end]):
+        return start, end
+    for cut in shorter_cuts(text, start, end):
+        candidate = text[start:cut]
+        if rule.pattern.fullmatch(candidate) and rule.is_valid(candidate):
+            return start, cut
+    return None
+
+
+def shorter_cuts(text: str, start: int, end: int) -> list[int]:
+    return [i for i in range(end - 1, start, -1) if text[i] in " -"]
 
 
 def value_span(match: re.Match[str]) -> tuple[int, int]:

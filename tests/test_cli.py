@@ -1,8 +1,11 @@
+import io
 import json
+import sys
 from collections.abc import Sequence
 
 from conftest import SAMPLE, NameListModel, anon_check
 
+from anon_check.cli import main
 from anon_check.spans import Span
 
 
@@ -60,6 +63,40 @@ class LateFindingModel:
 
 def test_mask_prints_nothing_and_exits_1_when_its_output_still_has_findings():
     assert anon_check("r. č. 850101/1233", "--mask", model=LateFindingModel()) == (1, "")
+
+
+class CrossingTokenModel(LateFindingModel):
+    def find(self, texts: Sequence[str]) -> list[list[Span]]:
+        self.calls += 1
+        if self.calls == 1:
+            return [[Span(4, 9, "PERSON", 0.9)] for _ in texts]
+        return [[Span(0, len(text), "PERSON", 0.9)] for text in texts]
+
+
+def test_mask_exits_1_when_a_finding_reaches_past_a_token():
+    assert anon_check("Ján Novák", "--mask", model=CrossingTokenModel()) == (1, "")
+
+
+class AddressModel:
+    def find(self, texts: Sequence[str]) -> list[list[Span]]:
+        return [[Span(0, 17, "ADDRESS", 0.8)] if text.startswith("Hlavná") else [] for text in texts]
+
+
+def test_mask_keeps_the_part_of_a_model_finding_outside_a_rule_finding():
+    status, out = anon_check("Hlavná 5 tel +421905123456 ok", "--mask", model=AddressModel())
+    assert (status, out) == (0, "ADDRESS_1 PHONE_1 ok")
+
+
+def test_main_skips_a_utf8_bom(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO("﻿850101/1233".encode())))
+    assert main([]) == 1
+    assert capsys.readouterr().out == "1:1 11 RODNE_CISLO 1.00\n"
+
+
+def test_main_exits_2_on_stdin_that_is_not_utf8(monkeypatch, capsys):
+    monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(b"\xff\xfe")))
+    assert main([]) == 2
+    assert capsys.readouterr() == ("", "anon-check: stdin is not UTF-8\n")
 
 
 def test_no_expected_value_appears_in_check_output(eval_outputs):

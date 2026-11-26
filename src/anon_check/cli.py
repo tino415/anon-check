@@ -15,7 +15,7 @@ CLEAN, FOUND, ERROR = 0, 1, 2
 def main(argv: list[str] | None = None) -> int:
     args = parse_arguments(argv)
     try:
-        text = sys.stdin.buffer.read().decode("utf-8")
+        text = sys.stdin.buffer.read().decode("utf-8-sig")
     except UnicodeDecodeError:
         return fail("stdin is not UTF-8")
     try:
@@ -53,8 +53,17 @@ def run_on_table(args: argparse.Namespace, table: Table, model: Model, out: Text
     found = find_in_cells([cell for _, cell in cells], model)
     if args.mask:
         return write_masked_table(table, found, model, out)
-    findings = [cell_finding(position, span) for (position, _), spans in zip(cells, found) for span in spans]
+    flagged_headers = {position.column for (position, _), spans in zip(cells, found) if position.row == 1 and spans}
+    findings = [
+        cell_finding(position, span, printable_header(position, flagged_headers))
+        for (position, _), spans in zip(cells, found)
+        for span in spans
+    ]
     return report(findings, args.json, out)
+
+
+def printable_header(position: Position, flagged_headers: set[int]) -> str | None:
+    return None if position.row == 1 or position.column in flagged_headers else position.header
 
 
 def write_masked_text(text: str, spans: list[Span], model: Model, out: TextIO) -> int:
@@ -70,7 +79,10 @@ def write_masked_table(table: Table, found: list[list[Span]], model: Model, out:
     masker = Masker()
     masked_cells = [masker.mask(cell.text, spans) for (_, cell), spans in zip(table.cells(), found)]
     masked = table.with_cells([text for text, _ in masked_cells]).write()
-    rechecked = find_in_cells([cell for _, cell in parse_table(masked, table.delimiter).cells()], model)
+    reparsed = [cell for _, cell in parse_table(masked, table.delimiter).cells()]
+    if len(reparsed) != len(masked_cells):
+        return fail("--mask output does not read back as the same cells")
+    rechecked = find_in_cells(reparsed, model)
     left = [span for (_, tokens), spans in zip(masked_cells, rechecked) for span in outside_tokens(spans, tokens)]
     if left:
         return fail(f"--mask output still has {len(left)} findings", FOUND)
@@ -87,11 +99,11 @@ def text_finding(text: str, span: Span) -> dict:
     }
 
 
-def cell_finding(position: Position, span: Span) -> dict:
+def cell_finding(position: Position, span: Span, header: str | None) -> dict:
     return {
         "row": position.row,
         "column": position.column,
-        "header": position.header,
+        "header": header,
         "col": span.start + 1,
         **span_fields(span),
     }

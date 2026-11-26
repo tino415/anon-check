@@ -15,6 +15,16 @@ def test_csv_json_adds_the_header_name():
     ]
 
 
+def test_csv_json_prints_no_header_that_has_a_finding():
+    text = "Ján Novák;IBAN\n850101/1233;nič\n"
+    status, out = anon_check(text, "--csv", "--json")
+    assert status == 1
+    assert [(f["row"], f["column"], f["header"], f["type"]) for f in json.loads(out)] == [
+        (1, 1, None, "PERSON"),
+        (2, 1, None, "RODNE_CISLO"),
+    ]
+
+
 def test_csv_mask_keeps_the_header_and_masks_the_cells():
     assert anon_check(SAMPLE_CSV, "--csv", "--mask") == (0, "Meno;IBAN\nPERSON_1;IBAN_1\n")
 
