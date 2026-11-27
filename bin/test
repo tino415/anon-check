@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(dirname "$(dirname "$(readlink -f "$0")")")
+
+podman build --target test -t localhost/anon-check-test "$root"
+podman build --target app --build-arg MODEL=none --label anon-check=test -t localhost/anon-check-rules "$root"
+
+ANON_CHECK_IMAGE=localhost/anon-check-test "$root/bin/anon-check" "$@" </dev/null
+"$root/tests/wrapper.sh"
+echo "bin/test: passed"

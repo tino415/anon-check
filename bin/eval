@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(dirname "$(dirname "$(readlink -f "$0")")")
+models=("$@")
+((${#models[@]})) || mapfile -t models < <(cut -f1 "$root/models.tsv")
+
+for model in "${models[@]}"; do
+  row=$(awk -F'\t' -v model="$model" '$1 == model' "$root/models.tsv")
+  library=$(cut -f2 <<<"$row")
+  threshold=$(cut -f3 <<<"$row")
+  tag="localhost/anon-check-eval:${model//\//-}"
+  podman build --target eval \
+    --build-arg LIBRARY="${library:-gliner}" --build-arg MODEL="$model" --build-arg THRESHOLD="${threshold:-0.5}" \
+    --label anon-check=eval -t "$tag" "$root"
+  ANON_CHECK_IMAGE=$tag "$root/bin/anon-check" </dev/null
+done
