@@ -2,7 +2,7 @@ FROM docker.io/library/python:3.12-slim AS base
 ARG LIBRARY=gliner
 ENV PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN pip install --index-url https://download.pytorch.org/whl/cpu torch \
- && pip install "$LIBRARY"
+ && pip install "$LIBRARY" transformers huggingface_hub protobuf
 RUN useradd --create-home --uid 1000 anon
 ENV HF_HOME=/opt/hf PYTHONPATH=/opt/anon-check/src
 WORKDIR /opt/anon-check
@@ -22,6 +22,7 @@ ARG LIBRARY=gliner
 ARG MODEL=none
 ARG THRESHOLD=0.5
 ENV ANON_CHECK_MODEL=${LIBRARY}:${MODEL} ANON_CHECK_THRESHOLD=${THRESHOLD}
+RUN [ "$MODEL" = none ] || python -c "import sys, huggingface_hub; huggingface_hub.snapshot_download(sys.argv[1])" "$MODEL"
 RUN python -m anon_check.warm_up
 ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 LABEL anon-check=keep
